@@ -30,7 +30,7 @@ alloc = [
 ]
 
 rand = [
-    "num/rand"
+    "num/rand",
 ]
 
 serde = [
@@ -42,6 +42,7 @@ std = [
     "alloc",
     "num/std",
     "serde?/std",
+    "strum/std",
 ]
 
 wasm = []
@@ -56,12 +57,9 @@ test = true
 
 [build-dependencies]
 
-[dev-dependencies]
-lazy_static = "1"
-
-[dependencies.num]
-default-features = false
-version = "0.4"
+[dependencies]
+num.workspace = true
+strum.workspace = true
 
 [dependencies.serde]
 default-features = false
@@ -69,10 +67,14 @@ features = ["derive"]
 optional = true
 version = "1"
 
+[dev-dependencies]
+lazy_static.workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 rustc-args = ["--cfg", "docsrs"]
 
 [target.wasm32-unknown-unknown.dependencies]
+getrandom = { features = ["js"], version = "0.2" }
 
 [target.wasm32-wasi]
