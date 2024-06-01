@@ -8,7 +8,7 @@ keywords = [ ]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/FL03/rs-spline.git"
-version = "0.0.0"
+version = "0.0.1"
 
 [workspace.dependencies]
 lazy_static = "1"
