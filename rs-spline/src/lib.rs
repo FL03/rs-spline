@@ -11,20 +11,21 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+pub use self::bspline::BSpline;
 pub use self::error::{Result, SplineError};
-pub use self::spline::Spline;
 pub use self::traits::prelude::*;
 
 #[macro_use]
 pub(crate) mod macros;
-pub(crate) mod spline;
 
 pub mod bspline;
 pub mod error;
 pub mod traits;
+pub mod types;
 
 pub mod prelude {
     pub use super::bspline::prelude::*;
     pub use super::error::*;
     pub use super::traits::prelude::*;
+    pub use super::types::prelude::*;
 }

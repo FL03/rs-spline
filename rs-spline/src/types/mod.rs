@@ -8,6 +8,6 @@ pub mod knot;
 pub mod point;
 
 pub(crate) mod prelude {
-    pub use super::knot::Knot;
+    pub use super::knot::Knots;
     pub use super::point::Point;
 }

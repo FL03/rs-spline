@@ -43,14 +43,10 @@ impl<A, B> Point<A, B> {
     pub fn into_tuple(self) -> (A, B) {
         (self.0, self.1)
     }
-
-    
-
-
 }
 
 /*
-    ************* Implementations *************
+ ************* Implementations *************
 */
 
 impl<A, B> From<(A, B)> for Point<A, B> {
@@ -60,20 +56,66 @@ impl<A, B> From<(A, B)> for Point<A, B> {
 }
 
 macro_rules! impl_ops {
-    ($trait:ident.$method:ident) => {
-        impl_ops!(@impl $trait.$method);
+    ($($($trait:ident)::*.$method:ident),* $(,)?) => {
+        $(impl_ops!(@impl $($trait)::*.$method);)*
     };
-    (@impl $trait:path.$method:ident) => {
-        impl<A, B, C, D> $trait<Point<C, D>> for Point<A, B>
+    (@impl $($trait:ident)::*.$method:ident) => {
+        impl<A, B, C, D> $($trait)::*<Point<C, D>> for Point<A, B>
         where
-            A: $trait<C>,
-            B: $trait<D>,
+            A: $($trait)::*<C>,
+            B: $($trait)::*<D>,
         {
             type Output = Point<A::Output, B::Output>;
 
-            fn $trait(self, rhs: Point<C, D>) -> Self::Output {
-                Point(self.0.$trait(rhs.0), self.1.$trait(rhs.1))
+            fn $method(self, rhs: Point<C, D>) -> Self::Output {
+                Point(self.0.$method(rhs.0), self.1.$method(rhs.1))
+            }
+        }
+
+        impl<'a, A, B, C, D> $($trait)::*<Point<C, D>> for &'a Point<A, B>
+        where
+            A: $($trait)::*<C>,
+            B: $($trait)::*<D>,
+            Point<A, B>: Clone,
+        {
+            type Output = Point<A::Output, B::Output>;
+
+            fn $method(self, rhs: Point<C, D>) -> Self::Output {
+                self.clone().$method(rhs)
+            }
+        }
+
+        impl<'a, A, B, C, D> $($trait)::*<&'a Point<C, D>> for &'a Point<A, B>
+        where
+            A: $($trait)::*<C>,
+            B: $($trait)::*<D>,
+            Point<A, B>: Clone,
+            Point<C, D>: Clone,
+        {
+            type Output = Point<A::Output, B::Output>;
+
+            fn $method(self, rhs: &'a Point<C, D>) -> Self::Output {
+                self.$method(rhs.clone())
+            }
+        }
+        impl<'a, A, B, C, D> $($trait)::*<&'a Point<C, D>> for Point<A, B>
+        where
+            A: $($trait)::*<C>,
+            B: $($trait)::*<D>,
+            Point<C, D>: Clone,
+        {
+            type Output = Point<A::Output, B::Output>;
+
+            fn $method(self, rhs: &'a Point<C, D>) -> Self::Output {
+                self.$method(rhs.clone())
             }
         }
     };
 }
+
+impl_ops!(
+    core::ops::Add.add,
+    core::ops::Div.div,
+    core::ops::Mul.mul,
+    core::ops::Sub.sub
+);

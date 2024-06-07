@@ -41,6 +41,7 @@ macro_rules! error_kind {
 
 error_kind! {
     pub enum SplineError {
+        InvalidKnotVector,
         Shape(ShapeError),
         TooFewKnots,
         NotEnoughPoints,
@@ -59,13 +60,13 @@ error_kind! {
 }
 
 impl SplineError {
+    pub fn invalid_knot_vector() -> Self {
+        Self::InvalidKnotVector
+    }
+
     pub fn not_enough_knots(exp: usize, res: usize) -> Self {
-        let err = ShapeError::NotEnoughKnots {
-            exp,
-            res,
-        };
+        let err = ShapeError::NotEnoughKnots { exp, res };
         Self::Shape(err)
-    
     }
     pub fn shape_error(err: ShapeError) -> Self {
         Self::Shape(err)
