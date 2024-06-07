@@ -14,3 +14,8 @@ pub(crate) mod prelude {
     pub use super::sample::*;
     pub use super::spline::*;
 }
+
+pub trait KnotStore<T> {
+    fn check_knot_domain(&self) -> bool;
+    fn degree(&self, points: usize) -> usize;
+}
