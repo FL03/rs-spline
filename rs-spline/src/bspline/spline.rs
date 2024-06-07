@@ -38,30 +38,34 @@ where
     P: Num,
     T: Num,
 {
-    pub fn new(points: Vec<P>, knots: Vec<T>) -> Result<Self>
+    pub fn new(
+        points: impl IntoIterator<Item = P>,
+        knots: impl IntoIterator<Item = T>,
+    ) -> Result<Self>
     where
         T: PartialOrd + core::fmt::Debug,
     {
-        let degree = degree(points.len(), knots.len());
-        if points.len() < degree {
-            return Err(SplineError::NotEnoughPoints);
-        }
-        if knots.len() != points.len() + degree + 1 {
-            return Err(SplineError::not_enough_knots(
-                points.len() + degree + 1,
-                knots.len(),
-            ));
-        }
-        if !_check_knot_domain(&knots) {
-            println!("{:#?}", &knots);
-            return Err(SplineError::invalid_knot_vector());
-        }
-
-        Ok(BSpline {
+        let points = Vec::from_iter(points);
+        let knots = Vec::from_iter(knots);
+        let (m, n) = (points.len(), knots.len());
+        let degree = degree(m, n);
+        let spline = BSpline {
             degree,
             knots,
             points,
-        })
+        };
+        if m < degree {
+            return Err(SplineError::NotEnoughPoints);
+        }
+        if n != m + degree + 1 {
+            return Err(SplineError::not_enough_knots(m + degree + 1, n));
+        }
+        if !_check_knot_domain(spline.knots()) {
+            println!("{:#?}", spline.knots());
+            return Err(SplineError::invalid_knot_vector());
+        }
+
+        Ok(spline)
     }
     /// Returns the degree of the spline
     pub fn degree(&self) -> usize {

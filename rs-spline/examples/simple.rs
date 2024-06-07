@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     let knots = vec![0.0, 0.0, 0.0, 0.1, 0.2, 0.9, 1.0];
     // initialize the B-spline
     let spline = BSpline::new(points, knots)?; // BSpline::new(degree, points, knots)?;
-    // generate some data points which may be used to sample the spline
+                                               // generate some data points which may be used to sample the spline
     let data = vec![0.0, 0.5, 1.0, 1.5, 2.9];
     // Evaluate the B-spline at different points
     let res = data
