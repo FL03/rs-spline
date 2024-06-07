@@ -103,16 +103,36 @@ where
         P: Copy + NumOps<T, P>,
         T: Copy + NumOps<P, P> + PartialOrd,
     {
-        t.iter().map(|t| self.spline(*t)).collect()
+        t.iter().map(|t| self.eval(*t)).collect()
     }
     /// Computes the value of the spline at time `t`;
     ///
     /// This method is an implementation of the [de Boor's algorithm](https://en.wikipedia.org/wiki/De_Boor%27s_algorithm)
-    pub fn spline(&self, t: T) -> P
+    pub fn eval(&self, t: T) -> P
     where
         P: Copy + NumOps<T, P>,
         T: Copy + NumOps<P, P> + PartialOrd,
     {
+        self.points()
+            .iter()
+            .copied()
+            .enumerate()
+            .fold(P::zero(), |acc, (i, p)| {
+                acc + p * self.basis(i, self.degree, t)
+            })
+    }
+    /// Computes the value of the spline at time `t`;
+    ///
+    /// This method is an implementation of the [de Boor's algorithm](https://en.wikipedia.org/wiki/De_Boor%27s_algorithm)
+    pub fn eval_between(&self, t: T) -> P
+    where
+        P: Copy + NumOps<T, P>,
+        T: Copy + NumOps<P, P> + PartialOrd,
+    {
+        assert!(
+            self.knots[0] <= t && t <= self.knots[self.knots.len() - 1],
+            "Provided value `t` is out of range!"
+        );
         self.points()
             .iter()
             .copied()
@@ -147,18 +167,21 @@ where
     where
         T: Copy + PartialOrd,
     {
-        let mut result = T::zero();
         // left-side denominator
-        let lsd = self.knots[i + k] - self.knots[i];
-        if lsd != T::zero() {
-            result = result + (t - self.knots[i]) / lsd * self.basis(i, k - 1, t);
-        }
+        let lsd = if self.knots[i + k] == self.knots[i] {
+            T::zero()
+        } else {
+            let c = (t - self.knots[i]) / (self.knots[i + k] - self.knots[i]);
+            c * self.basis(i, k - 1, t)
+        };
         // right-side denominator
-        let rsd = self.knots[i + k + 1] - self.knots[i + 1];
-        if rsd != T::zero() {
-            result = result + (self.knots[i + k + 1] - t) / rsd * self.basis(i + 1, k - 1, t);
-        }
+        let rsd = if self.knots[i + k + 1] == self.knots[i + 1] {
+            T::zero()
+        } else {
+            let c = (self.knots[i + k + 1] - t) / (self.knots[i + k + 1] - self.knots[i + 1]);
+            c * self.basis(i + 1, k - 1, t)
+        };
 
-        result
+        lsd + rsd
     }
 }

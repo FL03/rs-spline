@@ -6,24 +6,25 @@ extern crate rs_spline as rsp;
 
 use rsp::{BSpline, Result};
 
+
+macro_rules! spline {
+    ($spline:ident($x:expr)) => {
+        {
+            let tmp = $spline.eval($x);
+            println!("spline({:?}) = {:#?}", $x, &tmp);
+            tmp
+        }
+    };
+}
+
 fn main() -> Result<()> {
     // Example control points and knot vector
-    let points = vec![0.0, 1.0, 2.0, 3.0];
-    let knots = vec![0.0, 0.0, 0.0, 0.1, 0.2, 0.9, 1.0];
-    // initialize the B-spline
-    let spline = BSpline::new(points, knots)?; // BSpline::new(degree, points, knots)?;
-                                               // generate some data points which may be used to sample the spline
-    let data = vec![0.0, 0.5, 1.0, 1.5, 2.9];
-    // Evaluate the B-spline at different points
-    let res = data
-        .iter()
-        .copied()
-        .map(|t| (t, spline.spline(t)))
-        .collect::<Vec<_>>();
-    println!(
-        "******* B-Spline *******\n\nResults ('t', 'spline(t)'): {:#?}",
-        res
-    );
+    let points = vec![-1.0, 2.0, 0.0, -1.0];
+    let knots = linvec::<f64>(7);
+    let spline = BSpline::new(points, knots)?; // initialize the b-spline
+    println!("Degree: {:#?}", spline.degree());
+    
+    let _res = spline!(spline(2.5));
 
     Ok(())
 }
@@ -34,4 +35,8 @@ pub fn pad_vec<T: Clone>(vec: &Vec<T>, len: usize) -> Vec<T> {
         res.push(res[res.len() - 1].clone());
     }
     res
+}
+
+fn linvec<T>(len: usize) -> Vec<T> where T: num::traits::FromPrimitive {
+    (0..len).map(|i| T::from_usize(i).unwrap()).collect()
 }

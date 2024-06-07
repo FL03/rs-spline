@@ -59,6 +59,10 @@ test = true
 name = "simple"
 
 
+[[test]]
+name = "b-spline"
+required-features = ["std"]
+
 [build-dependencies]
 
 [dependencies]
