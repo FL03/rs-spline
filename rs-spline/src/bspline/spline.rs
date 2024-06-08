@@ -2,24 +2,15 @@
     Appellation: spline <module>
     Contrib: FL03 <jo3mccain@icloud.com>
 */
+use super::{Shape, _check_knot_domain};
 use crate::error::*;
+use crate::Eval;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
 use num::traits::{Num, NumOps};
 
-pub(crate) fn _check_knot_domain<T>(knots: &[T]) -> bool
-where
-    T: PartialOrd,
-{
-    knots.windows(2).all(|w| w[0] <= w[1])
-}
-
-pub fn degree(points: usize, knots: usize) -> usize {
-    knots - points - 1
-}
-
-/// A [B-Spline]((https://mathworld.wolfram.com/B-Spline.html)) is a generalization of the [Bezier curve](https://mathworld.wolfram.com/BezierCurve.html),
+/// A [B-Spline](https://mathworld.wolfram.com/B-Spline.html) is a generalization of the [Bezier curve](https://mathworld.wolfram.com/BezierCurve.html),
 ///
 ///
 /// ### Resources
@@ -28,48 +19,38 @@ pub fn degree(points: usize, knots: usize) -> usize {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct BSpline<T, P> {
-    pub(crate) degree: usize,
     pub(crate) knots: Vec<T>,
     pub(crate) points: Vec<P>,
+    pub(crate) shape: Shape,
 }
 
-impl<T, P> BSpline<T, P>
-where
-    P: Num,
-    T: Num,
-{
+impl<T, P> BSpline<T, P> {
     pub fn new(
         points: impl IntoIterator<Item = P>,
         knots: impl IntoIterator<Item = T>,
     ) -> Result<Self>
     where
-        T: PartialOrd + core::fmt::Debug,
+        T: PartialOrd,
     {
+        // collect the points and knots from the provided collections
         let points = Vec::from_iter(points);
         let knots = Vec::from_iter(knots);
-        let (m, n) = (points.len(), knots.len());
-        let degree = degree(m, n);
-        let spline = BSpline {
-            degree,
-            knots,
-            points,
-        };
-        if m < degree {
-            return Err(SplineError::NotEnoughPoints);
-        }
-        if n != m + degree + 1 {
-            return Err(SplineError::not_enough_knots(m + degree + 1, n));
-        }
-        if !_check_knot_domain(spline.knots()) {
-            println!("{:#?}", spline.knots());
+        // check if the knot vector is valid
+        if !_check_knot_domain(&knots) {
             return Err(SplineError::invalid_knot_vector());
         }
-
-        Ok(spline)
+        // create and validate the shape
+        let shape = Shape::new(points.len(), knots.len()).check()?;
+        // return a new instance of the spline
+        Ok(BSpline {
+            knots,
+            points,
+            shape,
+        })
     }
     /// Returns the degree of the spline
     pub fn degree(&self) -> usize {
-        self.degree
+        self.shape.degree()
     }
     /// Returns an immutable reference to the knot vector
     pub const fn knots(&self) -> &Vec<T> {
@@ -87,50 +68,53 @@ where
     pub fn points_mut(&mut self) -> &mut Vec<P> {
         &mut self.points
     }
+    pub fn shape(&self) -> Shape {
+        self.shape
+    }
+}
+
+impl<P, T> BSpline<T, P>
+where
+    P: Copy + Num,
+    T: Copy + Num + PartialOrd,
+{
     /// The piecewise polynomial basis function at index `i` and order `k` at time `t`
-    pub fn basis(&self, i: usize, k: usize, t: T) -> T
-    where
-        T: Copy + PartialOrd,
-    {
-        match k {
-            0 => self.zero_basis(i, t),
-            _ => self.nonzero_basis(i, k, t),
+    pub fn basis(&self, i: usize, deg: usize, time: T) -> T {
+        match deg {
+            0 => self.zero_basis(i, time),
+            _ => self.nonzero_basis(i, deg, time),
         }
     }
-    /// Computes the spline at multiple time points
-    pub fn spline_iter(&self, t: Vec<T>) -> Vec<P>
-    where
-        P: Copy + NumOps<T, P>,
-        T: Copy + NumOps<P, P> + PartialOrd,
-    {
-        t.iter().map(|t| self.eval(*t)).collect()
-    }
-    /// Computes the value of the spline at time `t`;
+    /// Evaluate the spline at a point `t`;
+    /// this implementation
     ///
-    /// This method is an implementation of the [de Boor's algorithm](https://en.wikipedia.org/wiki/De_Boor%27s_algorithm)
+    ///
+    /// This method is an implementation of the [de Boor's algorithm](https://en.wikipedia.org/wiki/De_Boor%27s_algorithm);
+    ///
     pub fn eval(&self, t: T) -> P
     where
-        P: Copy + NumOps<T, P>,
-        T: Copy + NumOps<P, P> + PartialOrd,
+        P: NumOps<T, P>,
+        T: NumOps<P, P>,
     {
         self.points()
             .iter()
             .copied()
             .enumerate()
             .fold(P::zero(), |acc, (i, p)| {
-                acc + p * self.basis(i, self.degree, t)
+                acc + p * self.basis(i, self.degree(), t)
             })
     }
-    /// Computes the value of the spline at time `t`;
+    /// Evaluates the spline at a point `t` within the range of the knot vector;
+    /// Panics if `t` is out of range
     ///
-    /// This method is an implementation of the [de Boor's algorithm](https://en.wikipedia.org/wiki/De_Boor%27s_algorithm)
-    pub fn eval_between(&self, t: T) -> P
+    /// see [eval](BSpline::eval) for more information.
+    pub fn eval_checked(&self, t: &T) -> P
     where
-        P: Copy + NumOps<T, P>,
-        T: Copy + NumOps<P, P> + PartialOrd,
+        P: NumOps<T, P>,
+        T: NumOps<P, P>,
     {
         assert!(
-            self.knots[0] <= t && t <= self.knots[self.knots.len() - 1],
+            &self.knots[0] <= t && t <= &self.knots[self.knots.len() - 1],
             "Provided value `t` is out of range!"
         );
         self.points()
@@ -138,8 +122,33 @@ where
             .copied()
             .enumerate()
             .fold(P::zero(), |acc, (i, p)| {
-                acc + p * self.basis(i, self.degree, t)
+                acc + p * self.basis(i, self.degree(), *t)
             })
+    }
+    /// Computes the spline at multiple time points
+    pub fn eval_iter<I>(&self, iter: I) -> Vec<(T, P)>
+    where
+        I: IntoIterator<Item = T>,
+        P: NumOps<T, P>,
+        T: NumOps<P, P>,
+    {
+        iter.into_iter().map(|t| (t, self.eval(t))).collect()
+    }
+}
+
+/*
+ ************* Implementations *************
+*/
+
+impl<P, T> Eval<T> for BSpline<T, P>
+where
+    P: Copy + Num + NumOps<T, P>,
+    T: Copy + Num + NumOps<P, P> + PartialOrd,
+{
+    type Output = P;
+
+    fn eval(&self, t: T) -> Self::Output {
+        self.eval(t)
     }
 }
 
@@ -148,25 +157,18 @@ where
 */
 impl<P, T> BSpline<T, P>
 where
-    P: Num,
-    T: Num,
+    P: Copy + Num,
+    T: Copy + Num + PartialOrd,
 {
     /// internal method implementing the basis function where `k = 0`
-    pub(crate) fn zero_basis(&self, i: usize, t: T) -> T
-    where
-        T: Copy + PartialOrd,
-    {
+    pub(crate) fn zero_basis(&self, i: usize, t: T) -> T {
         if self.knots[i] <= t && t < self.knots[i + 1] {
-            T::one()
-        } else {
-            T::zero()
+            return T::one();
         }
+        T::zero()
     }
     /// internal method implementing the basis function where `k > 0`
-    pub(crate) fn nonzero_basis(&self, i: usize, k: usize, t: T) -> T
-    where
-        T: Copy + PartialOrd,
-    {
+    pub(crate) fn nonzero_basis(&self, i: usize, k: usize, t: T) -> T {
         // left-side denominator
         let lsd = if self.knots[i + k] == self.knots[i] {
             T::zero()

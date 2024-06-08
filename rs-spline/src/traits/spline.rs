@@ -13,3 +13,9 @@ pub trait Sample<T> {
 
     fn sample(&self, t: T) -> Self::Output;
 }
+
+pub trait Spline {
+    type Output;
+
+    fn eval(&self, t: f64) -> Self::Output;
+}
