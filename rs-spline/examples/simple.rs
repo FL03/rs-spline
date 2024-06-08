@@ -5,31 +5,41 @@
 extern crate rs_spline as rsp;
 
 use anyhow::Result;
-use num::traits::{FromPrimitive, Num};
 use rsp::BSpline;
 
+pub fn init_tracing() {
+    use tracing::Level;
+    use tracing_subscriber::EnvFilter;
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_max_level(Level::DEBUG)
+        .with_target(true)
+        .without_time()
+        .init();
+    tracing::info!("Success: initialized the tracing modules...");
+}
+
 fn main() -> Result<()> {
+    init_tracing();
     // Example control points and knot vector
     let points = vec![-1.0, 2.0, 0.0, -1.0];
-    let knots = linspace::<f64>(0f64, 6f64, 7);
-    let spline = BSpline::new(points, knots)?; // initialize the b-spline
-    println!("{:#?}", spline.shape()); // print the shape of the spline
-                                       // Sample the spline at a few points
+    let knots = utils::linspace::<f64>(0f64, 6f64, 7);
+    // initialize the b-spline
+    let spline = BSpline::new(points, knots)?;
+    // print the shape of the spline
+    tracing::info!("Shape: {}", spline.shape());
+    // Sample the spline at a known points
     assert_eq!(dbg!(spline.eval(2.0)), 0.5);
     assert_eq!(dbg!(spline.eval(2.5)), 1.375);
 
-    let samples = linspace(0.0, 5.0, 50);
-    assert_eq!(samples.len(), 50);
-    for i in [1.1, 1.9] {
-        let _ = dbg!(spline.eval(i));
-    }
-
-    let a = spline.eval_iter(samples);
-    plot_spline("b-spline", a)?;
+    let samples = utils::linspace(0.0, 5.0, 50);
+    let res = spline.eval_iter(samples);
+    tracing::info!("Some Results: {:?}", &res[20..23]);
+    plot("b-spline", res)?;
     Ok(())
 }
 
-fn plot_spline(filename: &str, spline: impl IntoIterator<Item = (f64, f64)>) -> Result<()> {
+fn plot(filename: &str, spline: impl IntoIterator<Item = (f64, f64)>) -> Result<()> {
     use plotters::prelude::*;
     let fpath = format!(".artifacts/plots/{filename}.png");
     let root = BitMapBackend::new(&fpath, (640, 480)).into_drawing_area();
@@ -59,38 +69,56 @@ fn plot_spline(filename: &str, spline: impl IntoIterator<Item = (f64, f64)>) -> 
     // And we can draw something in the drawing area
     chart.draw_series(LineSeries::new(spline, &BLUE))?;
     root.present()?;
+    tracing::info!("Saved plot to: {fpath}");
     Ok(())
 }
 
-pub fn pad_vec<T: Clone>(vec: &Vec<T>, len: usize) -> Vec<T> {
-    let mut res = vec.clone();
-    while res.len() < len {
-        res.push(res[res.len() - 1].clone());
+
+
+
+#[allow(dead_code)]
+mod utils {
+    use num::traits::{FromPrimitive, Num, NumRef};
+
+    pub fn linvec<T>(range: core::ops::Range<usize>) -> Vec<T>
+    where
+        T: FromPrimitive,
+    {
+        range.map(|i| T::from_usize(i).unwrap()).collect()
     }
-    res
-}
 
-fn linvec<T>(len: usize) -> Vec<T>
-where
-    T: FromPrimitive,
-{
-    (0..len).map(|i| T::from_usize(i).unwrap()).collect()
-}
+    pub fn linspace<T>(from: T, end: T, steps: usize) -> Vec<T>
+    where
+        T: FromPrimitive + Num + NumRef,
+    {
+        let n = T::from_usize(steps - 1).unwrap();
+        let step = (end - &from) / n;
+        (0..steps)
+            .map(|i| T::from_usize(i).unwrap() * &step + &from)
+            .collect()
+    }
 
-fn linspace<T>(from: T, end: T, steps: usize) -> Vec<T>
-where
-    T: Copy + FromPrimitive + Num,
-{
-    let n = T::from_usize(steps - 1).unwrap();
-    let step = (end - from) / n;
-    (0..steps)
-        .map(|i| from + step * T::from_usize(i).unwrap())
-        .collect()
-}
+    pub fn pad_vec<T: Clone>(vec: &Vec<T>, len: usize) -> Vec<T> {
+        let mut res = vec.clone();
+        while res.len() < len {
+            res.push(res[res.len() - 1].clone());
+        }
+        res
+    }
 
-fn msg<T>(t: T, out: T)
-where
-    T: core::fmt::Debug,
-{
-    println!("spline({:?}) = {:#?}", t, out);
+    pub trait Linspace<T> where T: FromPrimitive + Num + NumRef {
+        type Output;
+
+        fn linspace(from: T, end: T, steps: usize) -> Self::Output;
+    }
+
+    impl<T> Linspace<T> for Vec<T>
+    where
+        T: FromPrimitive + Num + NumRef,
+    {
+        type Output = Vec<T>;
+        fn linspace(from: T, end: T, steps: usize) -> Self::Output {
+            linspace(from, end, steps)
+        }
+    }
 }

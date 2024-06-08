@@ -68,8 +68,9 @@ impl<T, P> BSpline<T, P> {
     pub fn points_mut(&mut self) -> &mut Vec<P> {
         &mut self.points
     }
-    pub fn shape(&self) -> Shape {
-        self.shape
+
+    pub const fn shape(&self) -> &Shape {
+        &self.shape
     }
 }
 
