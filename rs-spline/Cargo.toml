@@ -34,7 +34,7 @@ rand = [
 ]
 
 serde = [
-    "dep:serde"
+    "dep:serde",
 ]
 
 # ********* [FF] Environments *********
@@ -55,6 +55,14 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 test = true
 
+[[example]]
+name = "simple"
+
+
+[[test]]
+name = "b-spline"
+required-features = ["std"]
+
 [build-dependencies]
 
 [dependencies]
@@ -68,8 +76,11 @@ optional = true
 version = "1"
 
 [dev-dependencies]
+anyhow = "1"
 lazy_static.workspace = true
-
+plotters = { features = [], version = "0.3" }
+tracing = { features = [], version = "0.1" }
+tracing-subscriber = { features = ["env-filter"], version = "0.3" }
 [package.metadata.docs.rs]
 all-features = true
 rustc-args = ["--cfg", "docsrs"]

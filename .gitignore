@@ -1,8 +1,11 @@
 # Artifacts
 
-**/.artifacts/data/
+**/.artifacts/data/*
+**/.artifacts/logs/*
+**/.artifacts/plots/*
 **/.docker/data/
 
+!**/.artifacts/plots/.gitkeep
 
 ## Caches
 
