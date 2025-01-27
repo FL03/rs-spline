@@ -75,6 +75,6 @@ all-features = true
 rustc-args = ["--cfg", "docsrs"]
 
 [target.wasm32-unknown-unknown.dependencies]
-getrandom = { features = ["js"], version = "0.2" }
+getrandom = { features = ["js"], version = "0.3" }
 
 [target.wasm32-wasi]
