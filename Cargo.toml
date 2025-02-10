@@ -14,7 +14,7 @@ version = "0.0.0"
 lazy_static = "1"
 num = { default-features = false, version = "0.4" }
 paste = "1"
-strum = { default-features = false, features = ["derive"], version = "0.26" }
+strum = { default-features = false, features = ["derive"], version = "0.27" }
 
 [workspace]
 default-members = [
